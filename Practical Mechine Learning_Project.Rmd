@@ -1,0 +1,67 @@
+---
+title: "Practical Machine Learning_Project"
+author: "Field"
+date: "2016年7月4日"
+output: html_document
+---
+
+Here is the project for the Coursera courses Practical Machine Learning. We are using the data to predict how people's activity will be.
+
+#Load the data 
+First of all, we should load the data to see the structure. 
+```{r}
+setwd("/users/field/desktop/Practical Machine Learning")
+raw_train <- read.csv("pml-training.csv",stringsAsFactors = FALSE,na.strings = c("NA",""))
+raw_test <- read.csv("pml-testing.csv",stringsAsFactors = FALSE,na.strings = c("NA",""))
+```
+
+#Data cleaning
+Then we may want to use columns with no NAs.
+```{r}
+NAs <- apply(raw_train,2,function(x) {sum(is.na(x))}) 
+cleanTrain <- raw_train[,which(NAs == 0)]
+cleanTest <- raw_test[,which(NAs == 0)]
+```
+
+So far we have datasets with no NAs, then we need to remove columns composed of strings.
+
+```{r}
+removeIndex <- as.integer(c(1,2,3,4,5,6))
+trainSet <- cleanTrain[,-removeIndex]
+testSet <- cleanTest[,-removeIndex]
+```
+
+Then we use 70% of the data as our cross validation set.
+```{r}
+library(lattice)
+library(ggplot2)
+library(caret)
+trainIndex <- createDataPartition(y = trainSet$classe, p=0.7,list=FALSE)
+trainSet <- trainSet[trainIndex,]
+crossValidationSet <- trainSet[-trainIndex,]
+```
+
+
+#Model training
+First of all, we can choose among these models. So let's start with random forest.
+```{r}
+
+control <- trainControl(method = "cv", number = 4)
+modelFit <- train(trainSet$classe~., data = trainSet, method = "rf",trControl = control)
+```
+
+Then we may try some other algorithms like linear regression and glm.
+But the models seem to have some errors. Thus we will use the random forest as our final model.
+
+#Calculation the errors
+We can use the cross validation set to measure the sample error.
+```{r}
+predicted <- predict(modelFit, crossValidationSet)
+SampleError <- sum(predicted == crossValidationSet$classe)/nrow(crossValidationSet)
+SampleError
+```
+
+#Generating data for the prediction vector
+```{r}
+answers <- predict(modelFit,testSet)
+```
